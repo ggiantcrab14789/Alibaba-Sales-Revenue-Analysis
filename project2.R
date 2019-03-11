@@ -3,17 +3,17 @@ library(readxl)
 DATA_threesources <- read_excel("C:/Users/Alicia/Downloads/DATA_threesources.xls")
 attach(DATA_threesources)
 DATA_threesources$Date <- as.Date(DATA_threesources$Date)
-View(DATA_threesources)
+#View(DATA_threesources)
 
 #-------------------- Feature Engineering --------------------#
-#sales revenue = (DV+SV+RV)*average price - (SV*fee to google+RV*fee to third party)
+#Commission revenue = (DV+SV+RV)*average price - (SV*fee to google+RV*fee to third party)
 #SVFee = 1
 #RVFee = 1
-Sales_Revenue <- (DATA_threesources$'Direct Volumn'*35*0.07) + 
+Commission_Revenue <- (DATA_threesources$'Direct Volumn'*35*0.07) + 
   (DATA_threesources$'Search Volumn'+DATA_threesources$'Referral Volumn')*28*0.07 #-
   #(DATA_threesources$'Search Volumn'*SVFee) -
   #(DATA_threesources$'Referral Volumn'*RVFee)
-DATA_threesources <- cbind(DATA_threesources, Sales_Revenue)
+DATA_threesources <- cbind(DATA_threesources, Commission_Revenue)
 
 #ad revenue = Search AD + Display AD (US dollars)
 AD_Revenue <- DATA_threesources$'Search AD' + DATA_threesources$'Display AD'
@@ -24,10 +24,9 @@ Membership_Revenue <- DATA_threesources$'Membership'*3000
 DATA_threesources <- cbind(DATA_threesources, Membership_Revenue)
 
 
-#Total Revenue = Sales Reveune + AD Revenue + Membership Revenue
-Total_Revenue <- DATA_threesources$'Sales_Revenue' + DATA_threesources$'AD_Revenue' + DATA_threesources$'Membership_Revenue'
+#Total Revenue = Commission Reveune + AD Revenue + Membership Revenue
+Total_Revenue <- DATA_threesources$'Commission_Revenue' + DATA_threesources$'AD_Revenue' + DATA_threesources$'Membership_Revenue'
 DATA_threesources <- cbind(DATA_threesources, Total_Revenue)
-
 
 
 #-------------------- Correlation --------------------#
@@ -63,15 +62,17 @@ corrplot(res_state1, type = "upper", tl.col = "black", tl.srt = 45)
 library(ggplot2)
 library(scales)
 options(scipen = 999)
-df <- data.frame(DATA_threesources$'Sales_Revenue', DATA_threesources$'AD_Revenue', DATA_threesources$'Membership_Revenue', DATA_threesources$'Total_Revenue')
+df <- data.frame(DATA_threesources$'Commission_Revenue', DATA_threesources$'AD_Revenue', DATA_threesources$'Membership_Revenue', DATA_threesources$'Total_Revenue')
 ggplot(df, aes(Date, y = Value, fill = color)) +
-  scale_fill_brewer()+
+  #scale_fill_brewer()+
+  #scale_fill_manual(values = c("#eff3ff", "#bdd7e7", "#6baed6", "#2171b5"))+
+  scale_fill_manual(values = c("#2171b5", "#2171b5", "#2171b5", "#2171b5"))+
   geom_area(aes(x = as.Date(Date), y =`Total_Revenue`, fill = "Total_Revenue"))+
   geom_area(aes(x = as.Date(Date), y =`Membership_Revenue`, fill = "Membership_Revenue"))+
-  geom_area(aes(x = as.Date(Date), y =`Sales_Revenue`, fill = "Sales_Revenue"))+
+  geom_area(aes(x = as.Date(Date), y =`Commission_Revenue`, fill = "Commission_Revenue"))+
   geom_area(aes(x = as.Date(Date), y =`AD_Revenue`, fill = "AD_Revenue"))+
   scale_x_date(date_labels =  "%Y-%m-%d")+
-  geom_vline(aes(xintercept=as.numeric(as.Date("2011-03-01"))), colour="#BB0000", linetype="dashed")+
+  #geom_vline(aes(xintercept=as.numeric(as.Date("2011-03-01"))), colour="#BB0000", linetype="dashed")+
   labs(title="Daily Revenue")
 
 #Find Low Revenue Period
@@ -82,19 +83,34 @@ message("From ", low_Revenue$'Date'[1], " to ", low_Revenue$'Date'[nrow(low_Reve
 #the totoal revenue is lower than 10000k/day
 #This peorid matches the chinese new year(1/29~2/7)
 
-message("Sales Revenue is ",round(sum(DATA_threesources$Sales_Revenue)/sum(DATA_threesources$Total_Revenue)*100,2),"% of Total Revenue")
+message("Commission Revenue is ",round(sum(DATA_threesources$Commission_Revenue)/sum(DATA_threesources$Total_Revenue)*100,2),"% of Total Revenue")
 message("Memership Revenue is ",round(sum(DATA_threesources$Membership_Revenue)/sum(DATA_threesources$Total_Revenue)*100,2),"% of Total Revenue")
 message("AD Revenue is ",round(sum(DATA_threesources$AD_Revenue)/sum(DATA_threesources$Total_Revenue)*100,2),"% of Total Revenue")
 
-dfpie <- data.frame(Revenue = c("Membership", "Sales", "AD")
+dfpie <- data.frame(Revenue = c("Membership", "Commission", "AD")
                  ,value = c(sum(DATA_threesources$Membership_Revenue)/sum(DATA_threesources$Total_Revenue)*100,
-                            sum(DATA_threesources$Sales_Revenue)/sum(DATA_threesources$Total_Revenue)*100,
+                            sum(DATA_threesources$Commission_Revenue)/sum(DATA_threesources$Total_Revenue)*100,
                             sum(DATA_threesources$AD_Revenue)/sum(DATA_threesources$Total_Revenue)*100))
 
 ggplot(dfpie, aes(x="", y=value, fill=Revenue)) +
   geom_bar(stat="identity", width=1)+
   coord_polar("y", start=0)+ 
-  geom_text(aes(label = paste0(round(value), "%")), position = position_stack(vjust = 0.5), size=5)+
+  geom_text(aes(label = paste0(round(value), "%")), position = position_stack(vjust = 0.5), size=10)+
+  scale_fill_brewer(palette="Blues")+
+  labs(x = NULL, y = NULL, fill = NULL, title = "Revenue Pie Chart")+
+  theme_minimal()+
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.border = element_blank(),
+    panel.grid=element_blank(),
+    axis.ticks = element_blank(),
+    plot.title=element_text(size=14, face="bold"))+theme(axis.text.x=element_blank())
+
+ggplot(data.frame(Revenue= c("Membership", "Commission", "AD"), value = c(64,30,6)), aes(x="", y=value, fill=Revenue)) +
+  geom_bar(stat="identity", width=1)+
+  coord_polar("y", start=0)+ 
+  geom_text(aes(label = paste0(value, "%")), position = position_stack(vjust = 0.5), size=10)+
   scale_fill_brewer(palette="Blues")+
   labs(x = NULL, y = NULL, fill = NULL, title = "Revenue Pie Chart")+
   theme_minimal()+
